@@ -9,7 +9,7 @@ public class Calculator {
     private List<String> stateList;
     private String currentExpression;
     private StringBuilder cstring = new StringBuilder();//for user string storage
-    StringBuilder mainString;
+    private StringBuilder mainString;
     private boolean plusSign = true;//saving result sign
     private int closeBracket, openBracket;//saving start and finish substring positions
     private int finishPos = 0, startPos = 0;//saving start and finish expression part positions
@@ -54,58 +54,13 @@ public class Calculator {
 
     private void calculate(String input) {
         int[] charsPos = new int[valueCalc(input) + 2];
-
-        float a = 0, b = 0;     //for parse parts
-        Float c = null;     //result between parts
-        cstring.delete(0, cstring.length());    //cleaning
+        cstring.delete(0, cstring.length());
         cstring.append(input);
 
-        for (int i = 0; i < cstring.length(); i++) {
-            if (cstring.charAt(i) == '(') {
-                openBracket = i;
-            }
-            if (cstring.charAt(i) == 's') {
-                basicBracket = false;
-                calculateSubString(i, 3, 4);
-                sqrtFunction(cstring);
-                updateLine(mainString);
-            } else if (cstring.charAt(i) == '^') {
-                basicBracket = false;
-                calculateSubString(i, 2, 3);
-                inverseFunction(cstring);
-                updateLine(mainString);
-            } else if (cstring.charAt(i) == 'l') {
-                basicBracket = false;
-                calculateSubString(i, 2, 3);
-                logFunction(cstring);
-                updateLine(mainString);
-            } else if (cstring.charAt(i) == '!') {
-                basicBracket = false;
-                calculateSubString(i, 0, 1);
-                factFunction(cstring);
-                updateLine(mainString);
-            } else if (cstring.charAt(i) == ')' && (i == cstring.length() - 1 || (cstring.charAt(i + 1) != 's' && cstring.charAt(i + 1) != '^' && cstring.charAt(i + 1) != 'l' && cstring.charAt(i + 1) != '!')))//for locating max priority
-            {
-                basicBracket = true;
-                calculateSubString(i, 0, 0);
-                updateLine(mainString);
-            }
-        }
-
+        checkBracket();
         for (int i = 0; i < cstring.length(); i++) {
             if (cstring.charAt(i) == ',') {
-                StringBuilder mainString = new StringBuilder(cstring);
-                System.out.println(cstring.substring(i + 1, cstring.length()));
-                mainString.delete(i + 1, cstring.length());
-                calculate(cstring.substring(i + 1, cstring.length()));
-                mainString.insert(i + 1, cstring.toString());
-                cstring.delete(0, cstring.length());
-                cstring.insert(0, mainString.toString());
-                mainString.delete(0, i);
-                calculate(cstring.substring(0, i));
-                mainString.insert(0, cstring.toString());
-                cstring.delete(0, cstring.length());
-                cstring.insert(0, mainString.toString());
+                commaForLog(i);
                 break;
             }
         }
@@ -132,62 +87,19 @@ public class Calculator {
 
         for (int i = 0; i < cstring.length(); i++) {
             if ((cstring.charAt(i) == '+') && (plusSign)) {
-                findExpression(i, charsPos);
-                a = Float.parseFloat(cstring.substring(startPos, i));
-                b = Float.parseFloat(cstring.substring(i + 1, finishPos));
-                currentExpression = cstring.substring(startPos, finishPos);
-                cstring.delete(startPos, finishPos);
-                c = a + b;
-                treeLists.add(newList(a, "+", b, c));
-                cstring.insert(startPos, c.toString());
-                checkExpression(cstring.toString(), currentExpression, c.toString());
+                plusPlusSignTrue(i, charsPos);
                 break;
             }
             if ((cstring.charAt(i) == '+') && (!plusSign)) {
-                findExpression(i, charsPos);
-                a = Float.parseFloat(cstring.substring(0, i));
-                b = Float.parseFloat(cstring.substring(i + 1, finishPos));
-                currentExpression = cstring.substring(startPos, finishPos);
-                cstring.delete(0, finishPos);
-                if (b > a) {
-                    c = b - a;
-                    treeLists.add(newList(a * -1, "+", b, c));
-                    plusSign = true;
-                } else {
-                    c = a - b;
-                    treeLists.add(newList(a * -1, "+", b, c * -1));
-                }
-                cstring.insert(0, c.toString());
-                checkExpression(cstring.toString(), currentExpression, c.toString());
+                plusPlusSignFalse(i, charsPos);
                 break;
             }
             if ((cstring.charAt(i) == '-') && (plusSign)) {
-                findExpression(i, charsPos);
-                a = Float.parseFloat(cstring.substring(0, i));
-                b = Float.parseFloat(cstring.substring(i + 1, finishPos));
-                currentExpression = cstring.substring(startPos, finishPos);
-                cstring.delete(0, finishPos);
-                if (b > a) {
-                    c = b - a;
-                    treeLists.add(newList(a, "-", b, c * -1));
-                    plusSign = false;
-                } else {
-                    c = a - b;
-                    treeLists.add(newList(a, "-", b, c));
-                }
-                cstring.insert(0, c.toString());
-                checkExpression(cstring.toString(), currentExpression, c.toString());
+                minusPlusSignTrue(i, charsPos);
                 break;
             }
             if ((cstring.charAt(i) == '-') && (!plusSign)) {
-                findExpression(i, charsPos);
-                a = Float.parseFloat(cstring.substring(0, i));
-                b = Float.parseFloat(cstring.substring(i + 1, finishPos));
-                cstring.delete(0, finishPos);
-                c = a + b;
-                treeLists.add(newList(a * -1, "-", b, c * -1));
-                cstring.insert(0, c.toString());
-                checkExpression(cstring.toString(), currentExpression, c.toString());
+                minusPlusSignFalse(i, charsPos);
                 break;
             }
         }
@@ -264,6 +176,122 @@ public class Calculator {
                 stateList.add(stateList.get(stateList.size() - 1).replace(currentExpression, newLine));
             }
         } else stateList.add(stateList.get(stateList.size() - 1).replace(currentExpression, newLine));
+    }
+
+    private void checkBracket() {
+        for (int i = 0; i < cstring.length(); i++) {
+            if (cstring.charAt(i) == '(') {
+                openBracket = i;
+            }
+            if (cstring.charAt(i) == 's') {
+                basicBracket = false;
+                calculateSubString(i, 3, 4);
+                sqrtFunction(cstring);
+                updateLine(mainString);
+            } else if (cstring.charAt(i) == '^') {
+                basicBracket = false;
+                calculateSubString(i, 2, 3);
+                inverseFunction(cstring);
+                updateLine(mainString);
+            } else if (cstring.charAt(i) == 'l') {
+                basicBracket = false;
+                calculateSubString(i, 2, 3);
+                logFunction(cstring);
+                updateLine(mainString);
+            } else if (cstring.charAt(i) == '!') {
+                basicBracket = false;
+                calculateSubString(i, 0, 1);
+                factFunction(cstring);
+                updateLine(mainString);
+            } else if (cstring.charAt(i) == ')' && (i == cstring.length() - 1 || (cstring.charAt(i + 1) != 's' && cstring.charAt(i + 1) != '^' && cstring.charAt(i + 1) != 'l' && cstring.charAt(i + 1) != '!')))//for locating max priority
+            {
+                basicBracket = true;
+                calculateSubString(i, 0, 0);
+                updateLine(mainString);
+            }
+        }
+    }
+
+    private void commaForLog(int i) {
+        StringBuilder mainString = new StringBuilder(cstring);
+        System.out.println(cstring.substring(i + 1, cstring.length()));
+        mainString.delete(i + 1, cstring.length());
+        calculate(cstring.substring(i + 1, cstring.length()));
+        mainString.insert(i + 1, cstring.toString());
+        cstring.delete(0, cstring.length());
+        cstring.insert(0, mainString.toString());
+        mainString.delete(0, i);
+        calculate(cstring.substring(0, i));
+        mainString.insert(0, cstring.toString());
+        cstring.delete(0, cstring.length());
+        cstring.insert(0, mainString.toString());
+    }
+
+    private void plusPlusSignTrue(int i, int[] charsPos) {
+        float a = 0, b = 0;
+        Float c = null;
+        findExpression(i, charsPos);
+        a = Float.parseFloat(cstring.substring(startPos, i));
+        b = Float.parseFloat(cstring.substring(i + 1, finishPos));
+        currentExpression = cstring.substring(startPos, finishPos);
+        cstring.delete(startPos, finishPos);
+        c = a + b;
+        treeLists.add(newList(a, "+", b, c));
+        cstring.insert(startPos, c.toString());
+        checkExpression(cstring.toString(), currentExpression, c.toString());
+    }
+
+    private void plusPlusSignFalse(int i, int[] charsPos) {
+        float a = 0, b = 0;
+        Float c = null;
+        findExpression(i, charsPos);
+        a = Float.parseFloat(cstring.substring(0, i));
+        b = Float.parseFloat(cstring.substring(i + 1, finishPos));
+        currentExpression = cstring.substring(startPos, finishPos);
+        cstring.delete(0, finishPos);
+        if (b > a) {
+            c = b - a;
+            treeLists.add(newList(a * -1, "+", b, c));
+            plusSign = true;
+        } else {
+            c = a - b;
+            treeLists.add(newList(a * -1, "+", b, c * -1));
+        }
+        cstring.insert(0, c.toString());
+        checkExpression(cstring.toString(), currentExpression, c.toString());
+    }
+
+    private void minusPlusSignTrue(int i, int[] charsPos) {
+        float a = 0, b = 0;
+        Float c = null;
+        findExpression(i, charsPos);
+        a = Float.parseFloat(cstring.substring(0, i));
+        b = Float.parseFloat(cstring.substring(i + 1, finishPos));
+        currentExpression = cstring.substring(startPos, finishPos);
+        cstring.delete(0, finishPos);
+        if (b > a) {
+            c = b - a;
+            treeLists.add(newList(a, "-", b, c * -1));
+            plusSign = false;
+        } else {
+            c = a - b;
+            treeLists.add(newList(a, "-", b, c));
+        }
+        cstring.insert(0, c.toString());
+        checkExpression(cstring.toString(), currentExpression, c.toString());
+    }
+
+    private void minusPlusSignFalse(int i, int[] charsPos) {
+        float a = 0, b = 0;
+        Float c = null;
+        findExpression(i, charsPos);
+        a = Float.parseFloat(cstring.substring(0, i));
+        b = Float.parseFloat(cstring.substring(i + 1, finishPos));
+        cstring.delete(0, finishPos);
+        c = a + b;
+        treeLists.add(newList(a * -1, "-", b, c * -1));
+        cstring.insert(0, c.toString());
+        checkExpression(cstring.toString(), currentExpression, c.toString());
     }
 
     private void mulDivPer(int i, int[] charsPos, char sign) {
